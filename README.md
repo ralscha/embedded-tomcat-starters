@@ -32,6 +32,8 @@ Each jar supports the same launcher arguments:
 java -jar tomcat9/target/embedded-tomcat-starter-tomcat9-1.0.0.jar --appProject=C:\w\ws\backend --contextXml=C:\w\java\backend\conf\Catalina\localhost\backend.xml --contextPath=/backend --port=8080
 ```
 
+`--appProject` and `--contextXml` are required. All other arguments are optional.
+
 Available arguments:
 
 - `--appProject=...`
@@ -47,7 +49,9 @@ Available arguments:
 
 Notes:
 
+- If `--contextPath` is omitted, the launcher derives it from the `context.xml` file name, so `backend.xml` becomes `/backend` and `ROOT.xml` becomes the root context.
 - `--sharedLibDir` uses the current platform path separator: `;` on Windows and `:` on Unix-like systems.
+- Application runtime jars discovered under the target project are mounted under `/WEB-INF/lib`. Jars from `--sharedLibDir` are loaded through the parent classloader and are intended for shared container-style libraries.
 - If `--sharedLibDir` is omitted, the launcher looks for a sibling `lib` directory next to the application root inferred from `contextXml`, for example `<appProject>/lib` when `contextXml` is under `<appProject>/conf/Catalina/localhost`.
 - `context.xml` parsing covers `Resource`, `Environment`, `Parameter`, and nested `Resources` entries for `PreResources`, `JarResources`, and `PostResources` when they use Tomcat `DirResourceSet`, `JarResourceSet`, or `FileResourceSet`.
 

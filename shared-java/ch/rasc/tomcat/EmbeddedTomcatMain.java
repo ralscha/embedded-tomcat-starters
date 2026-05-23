@@ -54,7 +54,7 @@ public final class EmbeddedTomcatMain {
 
         List<Path> runtimeJars = findRuntimeJars(appProject);
         List<Path> sharedJars = findSharedJars(launcherArguments.sharedLibDirectories());
-        URLClassLoader sharedClassLoader = buildSharedClassLoader(runtimeJars, sharedJars);
+        URLClassLoader sharedClassLoader = buildSharedClassLoader(sharedJars);
 
         Tomcat tomcat = new Tomcat();
         tomcat.setBaseDir(catalinaBase.toString());
@@ -165,8 +165,8 @@ public final class EmbeddedTomcatMain {
         }
     }
 
-    private static URLClassLoader buildSharedClassLoader(List<Path> runtimeJars, List<Path> sharedJars) {
-        List<URL> urls = Stream.concat(runtimeJars.stream(), sharedJars.stream())
+    private static URLClassLoader buildSharedClassLoader(List<Path> sharedJars) {
+        List<URL> urls = sharedJars.stream()
             .map(EmbeddedTomcatMain::toUrl)
             .toList();
         return new URLClassLoader(urls.toArray(URL[]::new), EmbeddedTomcatMain.class.getClassLoader());
@@ -313,8 +313,8 @@ public final class EmbeddedTomcatMain {
                 .map(EmbeddedTomcatMain::splitArgument)
                 .collect(Collectors.toMap(Argument::name, Argument::value, (left, right) -> right));
 
-            Path appProject = resolvePath(values.getOrDefault("appProject", "..\\backend"));
-            Path contextXml = resolvePath(values.getOrDefault("contextXml", "..\\backend\\conf\\Catalina\\localhost\\backend.xml"));
+            Path appProject = EmbeddedTomcatMain.requirePathArgument(values, "appProject");
+            Path contextXml = EmbeddedTomcatMain.requirePathArgument(values, "contextXml");
             Path webappDirectory = resolvePath(values.getOrDefault("webappDir", appProject.resolve(Paths.get("src", "main", "webapp")).toString()));
             Path classesDirectory = resolvePath(values.getOrDefault("classesDir", appProject.resolve(Paths.get("target", "classes")).toString()));
             Path catalinaBase = resolvePath(values.getOrDefault("catalinaBase", Paths.get("target", "catalina-base").toString()));
@@ -327,7 +327,7 @@ public final class EmbeddedTomcatMain {
                 classesDirectory,
                 catalinaBase,
                 sharedLibDirectories,
-                normalizeContextPath(values.getOrDefault("contextPath", "/backend")),
+                normalizeContextPath(values.getOrDefault("contextPath", EmbeddedTomcatMain.inferContextPath(contextXml))),
                 values.getOrDefault("host", "localhost"),
                 Integer.parseInt(values.getOrDefault("port", "8080")),
                 Boolean.parseBoolean(values.getOrDefault("reloadable", "true"))
@@ -381,6 +381,33 @@ public final class EmbeddedTomcatMain {
         return Paths.get(value).toAbsolutePath().normalize();
     }
 
+    private static Path requirePathArgument(Map<String, String> values, String name) {
+        String value = values.get(name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Missing required argument --" + name + "=<path>");
+        }
+        return resolvePath(value);
+    }
+
+    private static String inferContextPath(Path contextXml) {
+        Path fileName = contextXml.getFileName();
+        if (fileName == null) {
+            return "";
+        }
+
+        String contextFileName = fileName.toString();
+        int extensionIndex = contextFileName.lastIndexOf('.');
+        String baseName = extensionIndex >= 0 ? contextFileName.substring(0, extensionIndex) : contextFileName;
+        boolean rootContext = baseName.isBlank();
+        if (!rootContext) {
+            rootContext = "ROOT".equalsIgnoreCase(baseName);
+        }
+        if (rootContext) {
+            return "";
+        }
+
+        return "/" + baseName;
+    }
     private static String normalizeContextPath(String contextPath) {
         if (contextPath == null || contextPath.isBlank() || "/".equals(contextPath)) {
             return "";

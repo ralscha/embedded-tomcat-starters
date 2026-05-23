@@ -1,10 +1,5 @@
 package ch.rasc.tomcat;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-
-import ch.rasc.tomcat.ContextXmlParser.ContextConfiguration;
-import ch.rasc.tomcat.ContextXmlParser.ResourceSetConfiguration;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -12,14 +7,21 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarOutputStream;
+
 import org.apache.catalina.WebResourceSet;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.FileResourceSet;
 import org.apache.catalina.webresources.JarResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import ch.rasc.tomcat.ContextXmlParser.ContextConfiguration;
+import ch.rasc.tomcat.ContextXmlParser.ResourceSetConfiguration;
 
 class EmbeddedTomcatMainTest {
 
@@ -82,8 +84,44 @@ class EmbeddedTomcatMainTest {
             parseSharedLibDirectories(sharedLibDirectories, contextXml));
     }
 
-    @SuppressWarnings("unchecked")
-    private static List<Path> parseSharedLibDirectories(String value, Path contextXml) throws Exception {
+    @Test
+    void launcherArgumentsRequireAppProjectAndContextXml() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+            () -> parseLauncherArguments());
+        assertEquals("Missing required argument --appProject=<path>", exception.getMessage());
+    }
+
+    @Test
+    void launcherArgumentsInferContextPathFromContextXmlFileName() throws Exception {
+        Path appProject = Files.createDirectories(tempDir.resolve("app"));
+        Path contextXml = tempDir.resolve("conf").resolve("Catalina").resolve("localhost").resolve("demo.xml");
+        Files.createDirectories(contextXml.getParent());
+        Files.writeString(contextXml, "<Context/>");
+
+        Object launcherArguments = parseLauncherArguments(
+            "--appProject=" + appProject,
+            "--contextXml=" + contextXml
+        );
+
+        assertEquals("/demo", contextPath(launcherArguments));
+    }
+
+    @Test
+    void launcherArgumentsInferRootContextForRootXml() throws Exception {
+        Path appProject = Files.createDirectories(tempDir.resolve("root-app"));
+        Path contextXml = tempDir.resolve("conf").resolve("Catalina").resolve("localhost").resolve("ROOT.xml");
+        Files.createDirectories(contextXml.getParent());
+        Files.writeString(contextXml, "<Context/>");
+
+        Object launcherArguments = parseLauncherArguments(
+            "--appProject=" + appProject,
+            "--contextXml=" + contextXml
+        );
+
+        assertEquals("", contextPath(launcherArguments));
+    }
+
+    @SuppressWarnings("unchecked")    private static List<Path> parseSharedLibDirectories(String value, Path contextXml) throws Exception {
         Method method = EmbeddedTomcatMain.class.getDeclaredMethod("parseSharedLibDirectories", String.class, Path.class);
         method.setAccessible(true);
         return (List<Path>) method.invoke(null, value, contextXml);
@@ -96,8 +134,27 @@ class EmbeddedTomcatMainTest {
         return (WebResourceSet) method.invoke(null, resources, configuration);
     }
 
-    private static Map<String, String> attributes(String className, String webAppMount, String base) {
-        return Map.of(
+    private static Object parseLauncherArguments(String... arguments) throws Exception {
+        Class<?> launcherArgumentsClass = Class.forName("ch.rasc.tomcat.EmbeddedTomcatMain$LauncherArguments");
+        Method method = launcherArgumentsClass.getDeclaredMethod("parse", String[].class);
+        method.setAccessible(true);
+        try {
+            return method.invoke(null, (Object) arguments);
+        } catch (java.lang.reflect.InvocationTargetException exception) {
+            if (exception.getCause() instanceof Exception cause) {
+                throw cause;
+            }
+            throw exception;
+        }
+    }
+
+    private static String contextPath(Object launcherArguments) throws Exception {
+        Method method = launcherArguments.getClass().getDeclaredMethod("contextPath");
+        method.setAccessible(true);
+        return (String) method.invoke(launcherArguments);
+    }
+
+    private static Map<String, String> attributes(String className, String webAppMount, String base) {        return Map.of(
             "className", className,
             "webAppMount", webAppMount,
             "base", base,
