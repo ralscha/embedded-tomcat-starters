@@ -20,16 +20,16 @@ Use a JDK 25 toolchain before building.
 
 This produces one fat jar per module:
 
-- `tomcat9/target/embedded-tomcat-starter-tomcat9-1.0.0.jar`
-- `tomcat10/target/embedded-tomcat-starter-tomcat10-1.0.0.jar`
-- `tomcat11/target/embedded-tomcat-starter-tomcat11-1.0.0.jar`
+- `tomcat9/target/embedded-tomcat-starter-tomcat9-x.jar`
+- `tomcat10/target/embedded-tomcat-starter-tomcat10-x.jar`
+- `tomcat11/target/embedded-tomcat-starter-tomcat11-x.jar`
 
 ## Run
 
 Each jar supports the same launcher arguments:
 
 ```sh
-java -jar tomcat9/target/embedded-tomcat-starter-tomcat9-1.0.0.jar --appProject=C:\w\ws\backend --contextXml=C:\w\java\backend\conf\Catalina\localhost\backend.xml --contextPath=/backend --port=8080
+java -jar tomcat9/target/embedded-tomcat-starter-tomcat9-x.jar --appProject=C:\w\ws\backend --contextXml=C:\w\java\backend\conf\Catalina\localhost\backend.xml --contextPath=/backend --port=8080
 ```
 
 `--appProject` and `--contextXml` are required. All other arguments are optional.
