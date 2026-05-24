@@ -53,6 +53,9 @@ public final class EmbeddedTomcatMain {
         requireDirectory(catalinaBase, "Catalina base");
 
         List<Path> runtimeJars = findRuntimeJars(appProject);
+        System.out.println("=== Runtime jars (" + runtimeJars.size() + " found) ===");
+        runtimeJars.forEach(jar -> System.out.println("  " + jar));
+        System.out.println();
         List<Path> sharedJars = findSharedJars(launcherArguments.sharedLibDirectories());
         URLClassLoader sharedClassLoader = buildSharedClassLoader(sharedJars);
 
