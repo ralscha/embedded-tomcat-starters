@@ -35,6 +35,10 @@ import org.apache.tomcat.util.descriptor.web.ContextResource;
 
 public final class EmbeddedTomcatMain {
 
+    private static final String DATASOURCE_TYPE = "javax.sql.DataSource";
+
+    private static final String DBCP_FACTORY = "org.apache.tomcat.dbcp.dbcp2.BasicDataSourceFactory";
+
     private EmbeddedTomcatMain() {
     }
 
@@ -262,6 +266,15 @@ public final class EmbeddedTomcatMain {
     private static Map<String, String> normalizeResourceAttributes(Map<String, String> attributes) {
         Map<String, String> normalizedAttributes = new LinkedHashMap<>(attributes);
 
+        if (!isDataSourceResource(normalizedAttributes)) {
+            return normalizedAttributes;
+        }
+
+        String factory = normalizedAttributes.get("factory");
+        if (factory != null && !factory.isBlank() && !DBCP_FACTORY.equals(factory)) {
+            return normalizedAttributes;
+        }
+
         renameAttribute(normalizedAttributes, "maxActive", "maxTotal");
         renameAttribute(normalizedAttributes, "maxWait", "maxWaitMillis");
 
@@ -270,9 +283,15 @@ public final class EmbeddedTomcatMain {
             normalizedAttributes.putIfAbsent("removeAbandonedOnBorrow", "true");
             normalizedAttributes.putIfAbsent("removeAbandonedOnMaintenance", "true");
         }
-        normalizedAttributes.putIfAbsent("factory", "org.apache.tomcat.dbcp.dbcp2.BasicDataSourceFactory");
+        normalizedAttributes.putIfAbsent("factory", DBCP_FACTORY);
 
         return normalizedAttributes;
+    }
+
+    private static boolean isDataSourceResource(Map<String, String> attributes) {
+        String type = attributes.get("type");
+        String factory = attributes.get("factory");
+        return DATASOURCE_TYPE.equals(type) || DBCP_FACTORY.equals(factory);
     }
 
     private static void renameAttribute(Map<String, String> attributes, String oldName, String newName) {

@@ -4,6 +4,7 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarOutputStream;
@@ -85,6 +86,53 @@ class EmbeddedTomcatMainTest {
     }
 
     @Test
+    void normalizeResourceAttributesDefaultsDataSourcesToDbcp() throws Exception {
+        Map<String, String> resourceAttributes = new LinkedHashMap<>();
+        resourceAttributes.put("name", "jdbc/backend");
+        resourceAttributes.put("type", "javax.sql.DataSource");
+        resourceAttributes.put("maxActive", "20");
+        resourceAttributes.put("maxWait", "1000");
+        resourceAttributes.put("removeAbandoned", "true");
+
+        Map<String, String> normalizedAttributes = normalizeResourceAttributes(resourceAttributes);
+
+        assertEquals("org.apache.tomcat.dbcp.dbcp2.BasicDataSourceFactory", normalizedAttributes.get("factory"));
+        assertEquals("20", normalizedAttributes.get("maxTotal"));
+        assertEquals("1000", normalizedAttributes.get("maxWaitMillis"));
+        assertEquals("true", normalizedAttributes.get("removeAbandonedOnBorrow"));
+        assertEquals("true", normalizedAttributes.get("removeAbandonedOnMaintenance"));
+    }
+
+    @Test
+    void normalizeResourceAttributesPreservesTomcatJdbcPoolProperties() throws Exception {
+        Map<String, String> resourceAttributes = new LinkedHashMap<>();
+        resourceAttributes.put("name", "jdbc/backend");
+        resourceAttributes.put("type", "javax.sql.DataSource");
+        resourceAttributes.put("factory", "org.apache.tomcat.jdbc.pool.DataSourceFactory");
+        resourceAttributes.put("maxActive", "20");
+        resourceAttributes.put("maxWait", "1000");
+        resourceAttributes.put("removeAbandoned", "true");
+
+        Map<String, String> normalizedAttributes = normalizeResourceAttributes(resourceAttributes);
+
+        assertEquals("org.apache.tomcat.jdbc.pool.DataSourceFactory", normalizedAttributes.get("factory"));
+        assertEquals("20", normalizedAttributes.get("maxActive"));
+        assertEquals("1000", normalizedAttributes.get("maxWait"));
+        assertEquals("true", normalizedAttributes.get("removeAbandoned"));
+    }
+
+    @Test
+    void normalizeResourceAttributesDoesNotDefaultNonDataSourceResourcesToDbcp() throws Exception {
+        Map<String, String> resourceAttributes = new LinkedHashMap<>();
+        resourceAttributes.put("name", "mail/session");
+        resourceAttributes.put("type", "jakarta.mail.Session");
+
+        Map<String, String> normalizedAttributes = normalizeResourceAttributes(resourceAttributes);
+
+        assertEquals(resourceAttributes, normalizedAttributes);
+    }
+
+    @Test
     void launcherArgumentsRequireAppProjectAndContextXml() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
             () -> parseLauncherArguments());
@@ -121,10 +169,18 @@ class EmbeddedTomcatMainTest {
         assertEquals("", contextPath(launcherArguments));
     }
 
-    @SuppressWarnings("unchecked")    private static List<Path> parseSharedLibDirectories(String value, Path contextXml) throws Exception {
+    @SuppressWarnings("unchecked")
+    private static List<Path> parseSharedLibDirectories(String value, Path contextXml) throws Exception {
         Method method = EmbeddedTomcatMain.class.getDeclaredMethod("parseSharedLibDirectories", String.class, Path.class);
         method.setAccessible(true);
         return (List<Path>) method.invoke(null, value, contextXml);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, String> normalizeResourceAttributes(Map<String, String> attributes) throws Exception {
+        Method method = EmbeddedTomcatMain.class.getDeclaredMethod("normalizeResourceAttributes", Map.class);
+        method.setAccessible(true);
+        return (Map<String, String>) method.invoke(null, attributes);
     }
 
     private static WebResourceSet createResourceSet(StandardRoot resources, ResourceSetConfiguration configuration) throws Exception {
@@ -154,7 +210,8 @@ class EmbeddedTomcatMainTest {
         return (String) method.invoke(launcherArguments);
     }
 
-    private static Map<String, String> attributes(String className, String webAppMount, String base) {        return Map.of(
+    private static Map<String, String> attributes(String className, String webAppMount, String base) {
+        return Map.of(
             "className", className,
             "webAppMount", webAppMount,
             "base", base,

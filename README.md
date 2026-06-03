@@ -6,7 +6,7 @@ This repository packages the existing embedded Tomcat launcher as three release-
 - `tomcat10` for Jakarta EE 10 / `jakarta.*` applications on Tomcat `10.1.55`
 - `tomcat11` for Jakarta EE 11 / `jakarta.*` applications on Tomcat `11.0.22`
 
-All three modules compile the same shared launcher sources from `shared-java` and only vary the Tomcat dependency line. That keeps the implementation generalized while still producing one runnable jar per Tomcat major.
+All three modules compile the same shared launcher sources from `shared-java` and only vary the Tomcat dependency line. Each runnable jar includes embedded Tomcat core, JSP, WebSocket, DBCP, Tomcat JDBC pool, and the launcher. That keeps the implementation generalized while still producing one runnable jar per Tomcat major.
 
 ## Build
 
@@ -51,9 +51,9 @@ Notes:
 
 - If `--contextPath` is omitted, the launcher derives it from the `context.xml` file name, so `backend.xml` becomes `/backend` and `ROOT.xml` becomes the root context.
 - `--sharedLibDir` uses the current platform path separator: `;` on Windows and `:` on Unix-like systems.
-- Application runtime jars discovered under the target project are mounted under `/WEB-INF/lib`. Jars from `--sharedLibDir` are loaded through the parent classloader and are intended for shared container-style libraries.
+- Application runtime jars discovered under `<appProject>/target/dependency`, `<appProject>/target/lib`, and exploded `<appProject>/target/*/WEB-INF/lib` directories are mounted under `/WEB-INF/lib`. Jars from `--sharedLibDir` are loaded through the parent classloader and are intended for shared container-style libraries.
 - If `--sharedLibDir` is omitted, the launcher looks for a sibling `lib` directory next to the application root inferred from `contextXml`, for example `<appProject>/lib` when `contextXml` is under `<appProject>/conf/Catalina/localhost`.
-- `context.xml` parsing covers `Resource`, `Environment`, `Parameter`, and nested `Resources` entries for `PreResources`, `JarResources`, and `PostResources` when they use Tomcat `DirResourceSet`, `JarResourceSet`, or `FileResourceSet`.
+- `context.xml` parsing covers `Resource`, `Environment`, `Parameter`, and nested `Resources` entries for `PreResources`, `JarResources`, and `PostResources` when they use Tomcat `DirResourceSet`, `JarResourceSet`, or `FileResourceSet`. DataSource `Resource` entries without a `factory` default to Tomcat DBCP; entries that specify another factory, such as Tomcat JDBC pool, keep their factory-specific properties unchanged.
 
 ## GitHub release
 
