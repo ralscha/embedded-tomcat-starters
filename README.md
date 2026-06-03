@@ -46,6 +46,26 @@ Available arguments:
 - `--port=...`
 - `--reloadable=true|false`
 - `--sharedLibDir=dir1<path-separator>dir2`
+- `--watchSource=...`
+- `--watchTarget=...`
+- `--watchExtensions=...`
+
+### Directory watcher
+
+When both `--watchSource` and `--watchTarget` are supplied, a file-system watcher runs as a daemon thread alongside Tomcat. It recursively monitors the source directory and copies changed files into the target directory, preserving the relative path structure.
+
+This is useful for JSF development workflows where `.xhtml` facelets, CSS, and other web resources should be reflected immediately without a rebuild:
+
+```sh
+java -jar tomcat11/target/embedded-tomcat-starter-tomcat11-x.jar \
+  --appProject=C:\w\ws\myapp \
+  --contextXml=C:\w\ws\myapp\conf\Catalina\localhost\myapp.xml \
+  --watchSource=C:\w\ws\myapp\src\main\webapp \
+  --watchTarget=C:\w\ws\myapp\target\classes\META-INF\resources \
+  --watchExtensions=.xhtml,.css,.js,.properties
+```
+
+- `--watchExtensions` accepts a comma-separated list of dot-prefixed extensions (e.g. `.xhtml,.css,.js`). Use `*` to watch **all** file types. When omitted, all files are watched.
 
 Notes:
 

@@ -87,6 +87,18 @@ public final class EmbeddedTomcatMain {
         mountResourceSets(resources, contextConfiguration.postResources(), resourceSet -> resources.addPostResources(resourceSet));
         bindNamingResources(context, contextConfiguration);
 
+        if (launcherArguments.watchSource() != null && launcherArguments.watchTarget() != null) {
+            DirectoryWatcher watcher = new DirectoryWatcher(
+                launcherArguments.watchSource(),
+                launcherArguments.watchTarget(),
+                launcherArguments.watchExtensions(),
+                DirectoryWatcher::logChange
+            );
+            Thread watcherThread = new Thread(watcher, "directory-watcher");
+            watcherThread.setDaemon(true);
+            watcherThread.start();
+        }
+
         tomcat.getConnector();
         tomcat.start();
 
@@ -328,7 +340,10 @@ public final class EmbeddedTomcatMain {
         String contextPath,
         String host,
         int port,
-        boolean reloadable
+        boolean reloadable,
+        Path watchSource,
+        Path watchTarget,
+        Set<String> watchExtensions
     ) {
         private static LauncherArguments parse(String[] args) {
             Map<String, String> values = Stream.of(args)
@@ -342,6 +357,16 @@ public final class EmbeddedTomcatMain {
             Path catalinaBase = resolvePath(values.getOrDefault("catalinaBase", Paths.get("target", "catalina-base").toString()));
             List<Path> sharedLibDirectories = parseSharedLibDirectories(values.get("sharedLibDir"), contextXml);
 
+            String watchSourceValue = values.get("watchSource");
+            Path watchSource = watchSourceValue != null && !watchSourceValue.isBlank()
+                ? resolvePath(watchSourceValue) : null;
+
+            String watchTargetValue = values.get("watchTarget");
+            Path watchTarget = watchTargetValue != null && !watchTargetValue.isBlank()
+                ? resolvePath(watchTargetValue) : null;
+
+            Set<String> watchExtensions = DirectoryWatcher.parseExtensions(values.get("watchExtensions"));
+
             return new LauncherArguments(
                 appProject,
                 contextXml,
@@ -352,7 +377,10 @@ public final class EmbeddedTomcatMain {
                 normalizeContextPath(values.getOrDefault("contextPath", EmbeddedTomcatMain.inferContextPath(contextXml))),
                 values.getOrDefault("host", "localhost"),
                 Integer.parseInt(values.getOrDefault("port", "8080")),
-                Boolean.parseBoolean(values.getOrDefault("reloadable", "true"))
+                Boolean.parseBoolean(values.getOrDefault("reloadable", "true")),
+                watchSource,
+                watchTarget,
+                watchExtensions
             );
         }
     }
