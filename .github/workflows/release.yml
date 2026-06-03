@@ -24,15 +24,30 @@ jobs:
           java-version: '25'
           cache: maven
 
+      - name: Resolve release version
+        id: release-version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="1.0.0"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set Maven version from tag
+        if: github.ref_type == 'tag'
+        run: mvn -B -ntp versions:set -DnewVersion=${{ steps.release-version.outputs.version }} -DgenerateBackupPoms=false
+
       - name: Build release artifacts
         run: mvn -B -ntp clean package
 
       - name: Collect jars
         run: |
           mkdir -p dist
-          cp tomcat9/target/embedded-tomcat-starter-tomcat9-*.jar dist/
-          cp tomcat10/target/embedded-tomcat-starter-tomcat10-*.jar dist/
-          cp tomcat11/target/embedded-tomcat-starter-tomcat11-*.jar dist/
+          cp tomcat9/target/embedded-tomcat-starter-tomcat9-${{ steps.release-version.outputs.version }}.jar dist/
+          cp tomcat10/target/embedded-tomcat-starter-tomcat10-${{ steps.release-version.outputs.version }}.jar dist/
+          cp tomcat11/target/embedded-tomcat-starter-tomcat11-${{ steps.release-version.outputs.version }}.jar dist/
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v7
