@@ -12,16 +12,34 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - java-version: '8'
+            maven-projects: '-pl tomcat9 -am'
+            all-modules: false
+          - java-version: '11'
+            maven-projects: '-pl tomcat9 -am'
+            all-modules: false
+          - java-version: '17'
+            maven-projects: ''
+            all-modules: true
+          - java-version: '21'
+            maven-projects: ''
+            all-modules: true
+          - java-version: '25'
+            maven-projects: ''
+            all-modules: true
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Set up Java
+      - name: Set up Java ${{ matrix.java-version }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '25'
+          java-version: ${{ matrix.java-version }}
           cache: maven
 
       - name: Resolve release version
@@ -40,23 +58,37 @@ jobs:
         run: mvn -B -ntp versions:set -DnewVersion=${{ steps.release-version.outputs.version }} -DgenerateBackupPoms=false
 
       - name: Build release artifacts
-        run: mvn -B -ntp clean package
+        run: mvn -B -ntp clean package ${{ matrix.maven-projects }} -Dmaven.compiler.release=${{ matrix.java-version }}
 
       - name: Collect jars
         run: |
           mkdir -p dist
-          cp tomcat9/target/embedded-tomcat-starter-tomcat9-${{ steps.release-version.outputs.version }}.jar dist/
-          cp tomcat10/target/embedded-tomcat-starter-tomcat10-${{ steps.release-version.outputs.version }}.jar dist/
-          cp tomcat11/target/embedded-tomcat-starter-tomcat11-${{ steps.release-version.outputs.version }}.jar dist/
+          cp tomcat9/target/embedded-tomcat-starter-tomcat9-${{ steps.release-version.outputs.version }}.jar dist/embedded-tomcat-starter-tomcat9-${{ steps.release-version.outputs.version }}-java${{ matrix.java-version }}.jar
+          if [[ "${{ matrix.all-modules }}" == "true" ]]; then
+            cp tomcat10/target/embedded-tomcat-starter-tomcat10-${{ steps.release-version.outputs.version }}.jar dist/embedded-tomcat-starter-tomcat10-${{ steps.release-version.outputs.version }}-java${{ matrix.java-version }}.jar
+            cp tomcat11/target/embedded-tomcat-starter-tomcat11-${{ steps.release-version.outputs.version }}.jar dist/embedded-tomcat-starter-tomcat11-${{ steps.release-version.outputs.version }}-java${{ matrix.java-version }}.jar
+          fi
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: embedded-tomcat-starters
+          name: embedded-tomcat-starters-java${{ matrix.java-version }}
           path: dist/*.jar
 
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download workflow artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: embedded-tomcat-starters-java*
+          path: dist
+          merge-multiple: true
+
       - name: Publish GitHub release assets
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*.jar

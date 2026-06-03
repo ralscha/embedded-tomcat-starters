@@ -13,6 +13,7 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -73,7 +74,7 @@ public final class DirectoryWatcher implements Runnable {
      * Creates a watcher that watches all file types.
      */
     public DirectoryWatcher(Path sourceDir, Path targetDir, Consumer<String> onChange) {
-        this(sourceDir, targetDir, Set.of(), onChange);
+        this(sourceDir, targetDir, Collections.emptySet(), onChange);
     }
 
     /**
@@ -216,7 +217,7 @@ public final class DirectoryWatcher implements Runnable {
     }
 
     private static void registerAll(Path root, WatchService watchService, Map<WatchKey, Path> keyToDir) throws IOException {
-        Files.walkFileTree(root, new SimpleFileVisitor<>() {
+        Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                 WatchKey key = dir.register(watchService,
@@ -249,11 +250,11 @@ public final class DirectoryWatcher implements Runnable {
      * @return the set of extensions, or an empty set to match all files
      */
     public static Set<String> parseExtensions(String value) {
-        if (value == null || value.isBlank()) {
-            return Set.of();
+        if (value == null || value.trim().isEmpty()) {
+            return Collections.emptySet();
         }
         if ("*".equals(value.trim())) {
-            return Set.of();
+            return Collections.emptySet();
         }
         return Stream.of(value.split(","))
             .map(String::trim)

@@ -91,14 +91,20 @@ final class ContextXmlParser {
             Element childElement = (Element) childNode;
             Map<String, String> resourceAttributes = attributes(childElement);
             switch (childElement.getTagName()) {
-                case "PreResources" -> configuration.preResources()
-                    .add(new ResourceSetConfiguration("PreResources", resourceAttributes));
-                case "JarResources" -> configuration.jarResources()
-                    .add(new ResourceSetConfiguration("JarResources", resourceAttributes));
-                case "PostResources" -> configuration.postResources()
-                    .add(new ResourceSetConfiguration("PostResources", resourceAttributes));
-                default -> {
-                }
+                case "PreResources":
+                    configuration.preResources()
+                        .add(new ResourceSetConfiguration("PreResources", resourceAttributes));
+                    break;
+                case "JarResources":
+                    configuration.jarResources()
+                        .add(new ResourceSetConfiguration("JarResources", resourceAttributes));
+                    break;
+                case "PostResources":
+                    configuration.postResources()
+                        .add(new ResourceSetConfiguration("PostResources", resourceAttributes));
+                    break;
+                default:
+                    break;
             }
         }
     }
@@ -120,28 +126,124 @@ final class ContextXmlParser {
         return Boolean.parseBoolean(element.getAttribute(attributeName));
     }
 
-    record ContextConfiguration(
-        boolean reloadable,
-        boolean crossContext,
-        List<ResourceConfiguration> resources,
-        List<EnvironmentConfiguration> environments,
-        List<ParameterConfiguration> parameters,
-        List<ResourceSetConfiguration> preResources,
-        List<ResourceSetConfiguration> jarResources,
-        List<ResourceSetConfiguration> postResources
-    ) {
+    static final class ContextConfiguration {
+
+        private final boolean reloadable;
+        private final boolean crossContext;
+        private final List<ResourceConfiguration> resources;
+        private final List<EnvironmentConfiguration> environments;
+        private final List<ParameterConfiguration> parameters;
+        private final List<ResourceSetConfiguration> preResources;
+        private final List<ResourceSetConfiguration> jarResources;
+        private final List<ResourceSetConfiguration> postResources;
+
+        ContextConfiguration(boolean reloadable, boolean crossContext,
+                List<ResourceConfiguration> resources,
+                List<EnvironmentConfiguration> environments,
+                List<ParameterConfiguration> parameters,
+                List<ResourceSetConfiguration> preResources,
+                List<ResourceSetConfiguration> jarResources,
+                List<ResourceSetConfiguration> postResources) {
+            this.reloadable = reloadable;
+            this.crossContext = crossContext;
+            this.resources = resources;
+            this.environments = environments;
+            this.parameters = parameters;
+            this.preResources = preResources;
+            this.jarResources = jarResources;
+            this.postResources = postResources;
+        }
+
+        boolean reloadable() {
+            return this.reloadable;
+        }
+
+        boolean crossContext() {
+            return this.crossContext;
+        }
+
+        List<ResourceConfiguration> resources() {
+            return this.resources;
+        }
+
+        List<EnvironmentConfiguration> environments() {
+            return this.environments;
+        }
+
+        List<ParameterConfiguration> parameters() {
+            return this.parameters;
+        }
+
+        List<ResourceSetConfiguration> preResources() {
+            return this.preResources;
+        }
+
+        List<ResourceSetConfiguration> jarResources() {
+            return this.jarResources;
+        }
+
+        List<ResourceSetConfiguration> postResources() {
+            return this.postResources;
+        }
     }
 
-    record ResourceConfiguration(Map<String, String> attributes) {
+    static final class ResourceConfiguration {
+
+        private final Map<String, String> attributes;
+
+        ResourceConfiguration(Map<String, String> attributes) {
+            this.attributes = attributes;
+        }
+
+        Map<String, String> attributes() {
+            return this.attributes;
+        }
     }
 
-    record EnvironmentConfiguration(Map<String, String> attributes) {
+    static final class EnvironmentConfiguration {
+
+        private final Map<String, String> attributes;
+
+        EnvironmentConfiguration(Map<String, String> attributes) {
+            this.attributes = attributes;
+        }
+
+        Map<String, String> attributes() {
+            return this.attributes;
+        }
     }
 
-    record ParameterConfiguration(Map<String, String> attributes) {
+    static final class ParameterConfiguration {
+
+        private final Map<String, String> attributes;
+
+        ParameterConfiguration(Map<String, String> attributes) {
+            this.attributes = attributes;
+        }
+
+        Map<String, String> attributes() {
+            return this.attributes;
+        }
     }
 
-    record ResourceSetConfiguration(String elementName, Map<String, String> attributes) {
+    static final class ResourceSetConfiguration {
+
+        private final String elementName;
+        private final Map<String, String> attributes;
+
+        ResourceSetConfiguration(String elementName, Map<String, String> attributes) {
+            this.elementName = elementName;
+            this.attributes = attributes;
+        }
+
+        String elementName() {
+            return this.elementName;
+        }
+
+        Map<String, String> attributes() {
+            return this.attributes;
+        }
+
         boolean isSupported() {
             String className = attributes.get("className");
             return DIR_RESOURCE_SET_CLASS_NAME.equals(className)

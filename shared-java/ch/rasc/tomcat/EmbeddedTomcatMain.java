@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -142,7 +143,7 @@ public final class EmbeddedTomcatMain {
         Set<Path> runtimeJars = new LinkedHashSet<>();
         Path targetDirectory = appProject.resolve("target");
         if (!Files.isDirectory(targetDirectory)) {
-            return List.of();
+            return Collections.emptyList();
         }
 
         collectJars(targetDirectory.resolve("dependency"), runtimeJars);
@@ -187,8 +188,8 @@ public final class EmbeddedTomcatMain {
     private static URLClassLoader buildSharedClassLoader(List<Path> sharedJars) {
         List<URL> urls = sharedJars.stream()
             .map(EmbeddedTomcatMain::toUrl)
-            .toList();
-        return new URLClassLoader(urls.toArray(URL[]::new), EmbeddedTomcatMain.class.getClassLoader());
+            .collect(Collectors.toList());
+        return new URLClassLoader(urls.toArray(new URL[urls.size()]), EmbeddedTomcatMain.class.getClassLoader());
     }
 
     private static URL toUrl(Path path) {
@@ -246,10 +247,18 @@ public final class EmbeddedTomcatMain {
                 String key = entry.getKey();
                 String value = entry.getValue();
                 switch (key) {
-                    case "name" -> contextResource.setName(value);
-                    case "type" -> contextResource.setType(value);
-                    case "auth" -> contextResource.setAuth(value);
-                    default -> contextResource.setProperty(key, value);
+                    case "name":
+                        contextResource.setName(value);
+                        break;
+                    case "type":
+                        contextResource.setType(value);
+                        break;
+                    case "auth":
+                        contextResource.setAuth(value);
+                        break;
+                    default:
+                        contextResource.setProperty(key, value);
+                        break;
                 }
             }
             context.getNamingResources().addResource(contextResource);
@@ -283,7 +292,7 @@ public final class EmbeddedTomcatMain {
         }
 
         String factory = normalizedAttributes.get("factory");
-        if (factory != null && !factory.isBlank() && !DBCP_FACTORY.equals(factory)) {
+        if (factory != null && !factory.trim().isEmpty() && !DBCP_FACTORY.equals(factory)) {
             return normalizedAttributes;
         }
 
@@ -324,27 +333,99 @@ public final class EmbeddedTomcatMain {
 
     private static String required(Map<String, String> attributes, String key) {
         String value = attributes.get(key);
-        if (value == null || value.isBlank()) {
+        if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Missing required attribute '" + key + "' in " + attributes);
         }
         return value;
     }
 
-    private record LauncherArguments(
-        Path appProject,
-        Path contextXml,
-        Path webappDirectory,
-        Path classesDirectory,
-        Path catalinaBase,
-        List<Path> sharedLibDirectories,
-        String contextPath,
-        String host,
-        int port,
-        boolean reloadable,
-        Path watchSource,
-        Path watchTarget,
-        Set<String> watchExtensions
-    ) {
+    private static final class LauncherArguments {
+
+        private final Path appProject;
+        private final Path contextXml;
+        private final Path webappDirectory;
+        private final Path classesDirectory;
+        private final Path catalinaBase;
+        private final List<Path> sharedLibDirectories;
+        private final String contextPath;
+        private final String host;
+        private final int port;
+        private final boolean reloadable;
+        private final Path watchSource;
+        private final Path watchTarget;
+        private final Set<String> watchExtensions;
+
+        private LauncherArguments(Path appProject, Path contextXml, Path webappDirectory,
+                Path classesDirectory, Path catalinaBase, List<Path> sharedLibDirectories,
+                String contextPath, String host, int port, boolean reloadable,
+                Path watchSource, Path watchTarget, Set<String> watchExtensions) {
+            this.appProject = appProject;
+            this.contextXml = contextXml;
+            this.webappDirectory = webappDirectory;
+            this.classesDirectory = classesDirectory;
+            this.catalinaBase = catalinaBase;
+            this.sharedLibDirectories = sharedLibDirectories;
+            this.contextPath = contextPath;
+            this.host = host;
+            this.port = port;
+            this.reloadable = reloadable;
+            this.watchSource = watchSource;
+            this.watchTarget = watchTarget;
+            this.watchExtensions = watchExtensions;
+        }
+
+        private Path appProject() {
+            return this.appProject;
+        }
+
+        private Path contextXml() {
+            return this.contextXml;
+        }
+
+        private Path webappDirectory() {
+            return this.webappDirectory;
+        }
+
+        private Path classesDirectory() {
+            return this.classesDirectory;
+        }
+
+        private Path catalinaBase() {
+            return this.catalinaBase;
+        }
+
+        private List<Path> sharedLibDirectories() {
+            return this.sharedLibDirectories;
+        }
+
+        private String contextPath() {
+            return this.contextPath;
+        }
+
+        private String host() {
+            return this.host;
+        }
+
+        private int port() {
+            return this.port;
+        }
+
+        private boolean reloadable() {
+            return this.reloadable;
+        }
+
+        private Path watchSource() {
+            return this.watchSource;
+        }
+
+        private Path watchTarget() {
+            return this.watchTarget;
+        }
+
+        private Set<String> watchExtensions() {
+            return this.watchExtensions;
+        }
+
         private static LauncherArguments parse(String[] args) {
             Map<String, String> values = Stream.of(args)
                 .map(EmbeddedTomcatMain::splitArgument)
@@ -358,11 +439,11 @@ public final class EmbeddedTomcatMain {
             List<Path> sharedLibDirectories = parseSharedLibDirectories(values.get("sharedLibDir"), contextXml);
 
             String watchSourceValue = values.get("watchSource");
-            Path watchSource = watchSourceValue != null && !watchSourceValue.isBlank()
+            Path watchSource = watchSourceValue != null && !watchSourceValue.trim().isEmpty()
                 ? resolvePath(watchSourceValue) : null;
 
             String watchTargetValue = values.get("watchTarget");
-            Path watchTarget = watchTargetValue != null && !watchTargetValue.isBlank()
+            Path watchTarget = watchTargetValue != null && !watchTargetValue.trim().isEmpty()
                 ? resolvePath(watchTargetValue) : null;
 
             Set<String> watchExtensions = DirectoryWatcher.parseExtensions(values.get("watchExtensions"));
@@ -386,20 +467,20 @@ public final class EmbeddedTomcatMain {
     }
 
     private static List<Path> parseSharedLibDirectories(String sharedLibDirValue, Path contextXml) {
-        if (sharedLibDirValue != null && !sharedLibDirValue.isBlank()) {
+        if (sharedLibDirValue != null && !sharedLibDirValue.trim().isEmpty()) {
             return Stream.of(sharedLibDirValue.split(Pattern.quote(File.pathSeparator)))
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
                 .map(EmbeddedTomcatMain::resolvePath)
-                .toList();
+                .collect(Collectors.toList());
         }
 
         Path inferredDirectory = inferSharedLibDirectory(contextXml);
         if (inferredDirectory != null) {
-            return List.of(inferredDirectory);
+            return Collections.singletonList(inferredDirectory);
         }
 
-        return List.of();
+        return Collections.emptyList();
     }
 
     private static Path inferSharedLibDirectory(Path contextXml) {
@@ -415,7 +496,23 @@ public final class EmbeddedTomcatMain {
         return Files.isDirectory(inferredDirectory) ? inferredDirectory : null;
     }
 
-    private record Argument(String name, String value) {
+    private static final class Argument {
+
+        private final String name;
+        private final String value;
+
+        private Argument(String name, String value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        private String name() {
+            return this.name;
+        }
+
+        private String value() {
+            return this.value;
+        }
     }
 
     private static Argument splitArgument(String argument) {
@@ -433,7 +530,7 @@ public final class EmbeddedTomcatMain {
 
     private static Path requirePathArgument(Map<String, String> values, String name) {
         String value = values.get(name);
-        if (value == null || value.isBlank()) {
+        if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Missing required argument --" + name + "=<path>");
         }
         return resolvePath(value);
@@ -448,7 +545,7 @@ public final class EmbeddedTomcatMain {
         String contextFileName = fileName.toString();
         int extensionIndex = contextFileName.lastIndexOf('.');
         String baseName = extensionIndex >= 0 ? contextFileName.substring(0, extensionIndex) : contextFileName;
-        boolean rootContext = baseName.isBlank();
+        boolean rootContext = baseName.trim().isEmpty();
         if (!rootContext) {
             rootContext = "ROOT".equalsIgnoreCase(baseName);
         }
@@ -459,7 +556,7 @@ public final class EmbeddedTomcatMain {
         return "/" + baseName;
     }
     private static String normalizeContextPath(String contextPath) {
-        if (contextPath == null || contextPath.isBlank() || "/".equals(contextPath)) {
+        if (contextPath == null || contextPath.trim().isEmpty() || "/".equals(contextPath)) {
             return "";
         }
         return contextPath.startsWith("/") ? contextPath : "/" + contextPath;

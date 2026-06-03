@@ -47,9 +47,9 @@ class EmbeddedTomcatMainTest {
         assertEquals(1, configuration.preResources().size());
         assertEquals(1, configuration.jarResources().size());
         assertEquals(1, configuration.postResources().size());
-        assertEquals(DirResourceSet.class.getName(), configuration.preResources().getFirst().attributes().get("className"));
-        assertEquals(JarResourceSet.class.getName(), configuration.jarResources().getFirst().attributes().get("className"));
-        assertEquals(FileResourceSet.class.getName(), configuration.postResources().getFirst().attributes().get("className"));
+        assertEquals(DirResourceSet.class.getName(), configuration.preResources().get(0).attributes().get("className"));
+        assertEquals(JarResourceSet.class.getName(), configuration.jarResources().get(0).attributes().get("className"));
+        assertEquals(FileResourceSet.class.getName(), configuration.postResources().get(0).attributes().get("className"));
     }
 
     @Test
