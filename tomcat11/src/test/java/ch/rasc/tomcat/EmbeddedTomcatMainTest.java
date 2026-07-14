@@ -16,8 +16,10 @@ import org.apache.catalina.webresources.FileResourceSet;
 import org.apache.catalina.webresources.JarResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -169,6 +171,62 @@ class EmbeddedTomcatMainTest {
         assertEquals("", contextPath(launcherArguments));
     }
 
+    @Test
+    void launcherArgumentsDefaultToSourceWebappMode() throws Exception {
+        Path appProject = Files.createDirectories(tempDir.resolve("source-app"));
+        Path contextXml = Files.writeString(tempDir.resolve("source.xml"), "<Context/>");
+
+        Object launcherArguments = parseLauncherArguments(
+            "--appProject=" + appProject,
+            "--contextXml=" + contextXml
+        );
+
+        assertFalse(explodedWebapp(launcherArguments));
+    }
+
+    @Test
+    void launcherArgumentsRequireWebappDirectoryInExplodedMode() throws Exception {
+        Path appProject = Files.createDirectories(tempDir.resolve("exploded-app"));
+        Path contextXml = Files.writeString(tempDir.resolve("exploded.xml"), "<Context/>");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+            () -> parseLauncherArguments(
+                "--appProject=" + appProject,
+                "--contextXml=" + contextXml,
+                "--explodedWebapp=true"
+            ));
+
+        assertEquals("--webappDir=<path> is required when --explodedWebapp=true", exception.getMessage());
+    }
+
+    @Test
+    void explodedWebappModeDoesNotMountClassesOrLibrariesAgain() throws Exception {
+        Path classesDirectory = Files.createDirectories(tempDir.resolve("classes"));
+        Path runtimeJar = tempDir.resolve("runtime.jar");
+        try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(runtimeJar))) {
+        }
+        StandardRoot resources = new StandardRoot(new StandardContext());
+
+        mountApplicationResources(resources, classesDirectory, List.of(runtimeJar), true);
+
+        assertEquals(0, resources.getPostResources().length);
+    }
+
+    @Test
+    void sourceWebappModeMountsClassesAndLibraries() throws Exception {
+        Path classesDirectory = Files.createDirectories(tempDir.resolve("classes"));
+        Path runtimeJar = tempDir.resolve("runtime.jar");
+        try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(runtimeJar))) {
+        }
+        StandardRoot resources = new StandardRoot(new StandardContext());
+
+        mountApplicationResources(resources, classesDirectory, List.of(runtimeJar), false);
+
+        assertEquals(2, resources.getPostResources().length);
+        assertTrue(resources.getPostResources()[0] instanceof DirResourceSet);
+        assertTrue(resources.getPostResources()[1] instanceof JarResourceSet);
+    }
+
     @SuppressWarnings("unchecked")
     private static List<Path> parseSharedLibDirectories(String value, Path contextXml) throws Exception {
         Method method = EmbeddedTomcatMain.class.getDeclaredMethod("parseSharedLibDirectories", String.class, Path.class);
@@ -208,6 +266,20 @@ class EmbeddedTomcatMainTest {
         Method method = launcherArguments.getClass().getDeclaredMethod("contextPath");
         method.setAccessible(true);
         return (String) method.invoke(launcherArguments);
+    }
+
+    private static boolean explodedWebapp(Object launcherArguments) throws Exception {
+        Method method = launcherArguments.getClass().getDeclaredMethod("explodedWebapp");
+        method.setAccessible(true);
+        return (boolean) method.invoke(launcherArguments);
+    }
+
+    private static void mountApplicationResources(StandardRoot resources, Path classesDirectory,
+            List<Path> runtimeJars, boolean explodedWebapp) throws Exception {
+        Method method = EmbeddedTomcatMain.class.getDeclaredMethod("mountApplicationResources",
+            StandardRoot.class, Path.class, List.class, boolean.class);
+        method.setAccessible(true);
+        method.invoke(null, resources, classesDirectory, runtimeJars, explodedWebapp);
     }
 
     private static Map<String, String> attributes(String className, String webAppMount, String base) {

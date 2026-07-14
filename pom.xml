@@ -3,7 +3,7 @@
 
     <groupId>ch.rasc</groupId>
     <artifactId>embedded-tomcat-starters</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.5</version>
     <packaging>pom</packaging>
     <name>embedded-tomcat-starters</name>
 

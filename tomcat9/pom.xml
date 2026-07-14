@@ -14,7 +14,7 @@
     <name>embedded-tomcat-starter-tomcat9</name>
 
     <properties>
-        <tomcat.version>9.0.119</tomcat.version>
+        <tomcat.version>9.0.120</tomcat.version>
     </properties>
 
     <dependencies>

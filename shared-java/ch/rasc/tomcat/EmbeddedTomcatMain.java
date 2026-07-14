@@ -51,16 +51,21 @@ public final class EmbeddedTomcatMain {
         Path webappDirectory = launcherArguments.webappDirectory();
         Path classesDirectory = launcherArguments.classesDirectory();
         Path catalinaBase = launcherArguments.catalinaBase();
+        boolean explodedWebapp = launcherArguments.explodedWebapp();
 
         requireDirectory(appProject, "App project");
         requireDirectory(webappDirectory, "Webapp directory");
         Files.createDirectories(catalinaBase);
         requireDirectory(catalinaBase, "Catalina base");
 
-        List<Path> runtimeJars = findRuntimeJars(appProject);
-        System.out.println("=== Runtime jars (" + runtimeJars.size() + " found) ===");
-        runtimeJars.forEach(jar -> System.out.println("  " + jar));
-        System.out.println();
+        List<Path> runtimeJars = explodedWebapp ? Collections.emptyList() : findRuntimeJars(appProject);
+        if (explodedWebapp) {
+            System.out.println("Using WEB-INF/classes and WEB-INF/lib from exploded webapp: " + webappDirectory);
+        } else {
+            System.out.println("=== Runtime jars (" + runtimeJars.size() + " found) ===");
+            runtimeJars.forEach(jar -> System.out.println("  " + jar));
+            System.out.println();
+        }
         List<Path> sharedJars = findSharedJars(launcherArguments.sharedLibDirectories());
         URLClassLoader sharedClassLoader = buildSharedClassLoader(sharedJars);
 
@@ -81,8 +86,7 @@ public final class EmbeddedTomcatMain {
         StandardRoot resources = new StandardRoot(context);
         context.setResources(resources);
 
-        mountClasses(resources, classesDirectory);
-        mountLibraries(resources, runtimeJars);
+        mountApplicationResources(resources, classesDirectory, runtimeJars, explodedWebapp);
         mountResourceSets(resources, contextConfiguration.preResources(), resourceSet -> resources.addPreResources(resourceSet));
         mountResourceSets(resources, contextConfiguration.jarResources(), resourceSet -> resources.addJarResources(resourceSet));
         mountResourceSets(resources, contextConfiguration.postResources(), resourceSet -> resources.addPostResources(resourceSet));
@@ -106,8 +110,11 @@ public final class EmbeddedTomcatMain {
         System.out.println("Embedded Tomcat started");
         System.out.println("  URL: http://" + launcherArguments.host() + ':' + launcherArguments.port() + launcherArguments.contextPath());
         System.out.println("  Webapp: " + webappDirectory);
-        System.out.println("  Classes: " + classesDirectory);
-        System.out.println("  Runtime jars: " + runtimeJars.size());
+        System.out.println("  Webapp mode: " + (explodedWebapp ? "exploded" : "source"));
+        if (!explodedWebapp) {
+            System.out.println("  Classes: " + classesDirectory);
+            System.out.println("  Runtime jars: " + runtimeJars.size());
+        }
         System.out.println("  Shared jars: " + sharedJars.size());
 
         tomcat.getServer().await();
@@ -126,6 +133,16 @@ public final class EmbeddedTomcatMain {
         }
 
         resources.addPostResources(new DirResourceSet(resources, "/WEB-INF/classes", classesDirectory.toString(), "/"));
+    }
+
+    private static void mountApplicationResources(StandardRoot resources, Path classesDirectory,
+            List<Path> runtimeJars, boolean explodedWebapp) {
+        if (explodedWebapp) {
+            return;
+        }
+
+        mountClasses(resources, classesDirectory);
+        mountLibraries(resources, runtimeJars);
     }
 
     private static void mountLibraries(StandardRoot resources, List<Path> runtimeJars) {
@@ -345,6 +362,7 @@ public final class EmbeddedTomcatMain {
         private final Path contextXml;
         private final Path webappDirectory;
         private final Path classesDirectory;
+        private final boolean explodedWebapp;
         private final Path catalinaBase;
         private final List<Path> sharedLibDirectories;
         private final String contextPath;
@@ -356,13 +374,14 @@ public final class EmbeddedTomcatMain {
         private final Set<String> watchExtensions;
 
         private LauncherArguments(Path appProject, Path contextXml, Path webappDirectory,
-                Path classesDirectory, Path catalinaBase, List<Path> sharedLibDirectories,
+                Path classesDirectory, boolean explodedWebapp, Path catalinaBase, List<Path> sharedLibDirectories,
                 String contextPath, String host, int port, boolean reloadable,
                 Path watchSource, Path watchTarget, Set<String> watchExtensions) {
             this.appProject = appProject;
             this.contextXml = contextXml;
             this.webappDirectory = webappDirectory;
             this.classesDirectory = classesDirectory;
+            this.explodedWebapp = explodedWebapp;
             this.catalinaBase = catalinaBase;
             this.sharedLibDirectories = sharedLibDirectories;
             this.contextPath = contextPath;
@@ -388,6 +407,10 @@ public final class EmbeddedTomcatMain {
 
         private Path classesDirectory() {
             return this.classesDirectory;
+        }
+
+        private boolean explodedWebapp() {
+            return this.explodedWebapp;
         }
 
         private Path catalinaBase() {
@@ -433,6 +456,10 @@ public final class EmbeddedTomcatMain {
 
             Path appProject = EmbeddedTomcatMain.requirePathArgument(values, "appProject");
             Path contextXml = EmbeddedTomcatMain.requirePathArgument(values, "contextXml");
+            boolean explodedWebapp = Boolean.parseBoolean(values.getOrDefault("explodedWebapp", "false"));
+            if (explodedWebapp && !values.containsKey("webappDir")) {
+                throw new IllegalArgumentException("--webappDir=<path> is required when --explodedWebapp=true");
+            }
             Path webappDirectory = resolvePath(values.getOrDefault("webappDir", appProject.resolve(Paths.get("src", "main", "webapp")).toString()));
             Path classesDirectory = resolvePath(values.getOrDefault("classesDir", appProject.resolve(Paths.get("target", "classes")).toString()));
             Path catalinaBase = resolvePath(values.getOrDefault("catalinaBase", Paths.get("target", "catalina-base").toString()));
@@ -453,6 +480,7 @@ public final class EmbeddedTomcatMain {
                 contextXml,
                 webappDirectory,
                 classesDirectory,
+                explodedWebapp,
                 catalinaBase,
                 sharedLibDirectories,
                 normalizeContextPath(values.getOrDefault("contextPath", EmbeddedTomcatMain.inferContextPath(contextXml))),

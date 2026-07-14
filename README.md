@@ -2,9 +2,9 @@
 
 This repository packages the existing embedded Tomcat launcher as three release-ready Maven modules:
 
-- `tomcat9` for Java EE 8 / `javax.*` applications on Tomcat `9.0.119`
-- `tomcat10` for Jakarta EE 10 / `jakarta.*` applications on Tomcat `10.1.56`
-- `tomcat11` for Jakarta EE 11 / `jakarta.*` applications on Tomcat `11.0.23`
+- `tomcat9` for Java EE 8 / `javax.*` applications on Tomcat `9.0.120`
+- `tomcat10` for Jakarta EE 10 / `jakarta.*` applications on Tomcat `10.1.57`
+- `tomcat11` for Jakarta EE 11 / `jakarta.*` applications on Tomcat `11.0.24`
 
 All three modules compile the same shared launcher sources from `shared-java` and only vary the Tomcat dependency line. Each runnable jar includes embedded Tomcat core, JSP, WebSocket, DBCP, Tomcat JDBC pool, and the launcher. That keeps the implementation generalized while still producing one runnable jar per Tomcat major.
 
@@ -39,6 +39,7 @@ Available arguments:
 - `--appProject=...`
 - `--contextXml=...`
 - `--webappDir=...`
+- `--explodedWebapp=true|false`
 - `--classesDir=...`
 - `--catalinaBase=...`
 - `--contextPath=...`
@@ -70,6 +71,17 @@ java -jar tomcat11/target/embedded-tomcat-starter-tomcat11-x.jar \
 Notes:
 
 - If `--contextPath` is omitted, the launcher derives it from the `context.xml` file name, so `backend.xml` becomes `/backend` and `ROOT.xml` becomes the root context.
+- By default, `webappDir` is `<appProject>/src/main/webapp`, `classesDir` is `<appProject>/target/classes`, and discovered runtime jars are mounted under `WEB-INF/lib`.
+- Set `--explodedWebapp=true` when `webappDir` points to a complete exploded web application containing its own `WEB-INF/classes` and `WEB-INF/lib`. In this mode `--webappDir` is required, `classesDir` is ignored, and runtime jars from `appProject` are not mounted a second time:
+
+  ```sh
+  java -jar tomcat11/target/embedded-tomcat-starter-tomcat11-x.jar \
+    --appProject=C:\w\ws\myapp \
+    --contextXml=C:\w\ws\myapp\conf\Catalina\localhost\myapp.xml \
+    --webappDir=C:\w\ws\myapp\target\myapp \
+    --explodedWebapp=true
+  ```
+
 - `--sharedLibDir` uses the current platform path separator: `;` on Windows and `:` on Unix-like systems.
 - Application runtime jars discovered under `<appProject>/target/dependency`, `<appProject>/target/lib`, and exploded `<appProject>/target/*/WEB-INF/lib` directories are mounted under `/WEB-INF/lib`. Jars from `--sharedLibDir` are loaded through the parent classloader and are intended for shared container-style libraries.
 - If `--sharedLibDir` is omitted, the launcher looks for a sibling `lib` directory next to the application root inferred from `contextXml`, for example `<appProject>/lib` when `contextXml` is under `<appProject>/conf/Catalina/localhost`.
