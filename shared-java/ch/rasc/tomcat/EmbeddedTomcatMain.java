@@ -67,7 +67,12 @@ public final class EmbeddedTomcatMain {
             System.out.println();
         }
         List<Path> sharedJars = findSharedJars(launcherArguments.sharedLibDirectories());
-        URLClassLoader sharedClassLoader = buildSharedClassLoader(sharedJars);
+        // In source mode, include runtime jars in parent classloader for annotation scanning
+        List<Path> parentClassloaderJars = new ArrayList<>(sharedJars);
+        if (!explodedWebapp) {
+            parentClassloaderJars.addAll(runtimeJars);
+        }
+        URLClassLoader sharedClassLoader = buildSharedClassLoader(parentClassloaderJars);
 
         Tomcat tomcat = new Tomcat();
         tomcat.setBaseDir(catalinaBase.toString());
