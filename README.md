@@ -2,9 +2,9 @@
 
 This repository packages the existing embedded Tomcat launcher as three release-ready Maven modules:
 
-- `tomcat9` for Java EE 8 / `javax.*` applications on Tomcat `9.0.120`
-- `tomcat10` for Jakarta EE 10 / `jakarta.*` applications on Tomcat `10.1.57`
-- `tomcat11` for Jakarta EE 11 / `jakarta.*` applications on Tomcat `11.0.24`
+- `tomcat9` for Java EE 8 / `javax.*` applications on Tomcat `9.0.121`
+- `tomcat10` for Jakarta EE 10 / `jakarta.*` applications on Tomcat `10.1.59`
+- `tomcat11` for Jakarta EE 11 / `jakarta.*` applications on Tomcat `11.0.25`
 
 All three modules compile the same shared launcher sources from `shared-java` and only vary the Tomcat dependency line. Each runnable jar includes embedded Tomcat core, JSP, WebSocket, DBCP, Tomcat JDBC pool, and the launcher. That keeps the implementation generalized while still producing one runnable jar per Tomcat major.
 

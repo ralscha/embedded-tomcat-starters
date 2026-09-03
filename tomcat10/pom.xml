@@ -6,7 +6,7 @@
     <parent>
         <groupId>ch.rasc</groupId>
         <artifactId>embedded-tomcat-starters</artifactId>
-        <version>1.0.6</version>
+        <version>1.0.7</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -14,7 +14,7 @@
     <name>embedded-tomcat-starter-tomcat10</name>
 
     <properties>
-        <tomcat.version>10.1.57</tomcat.version>
+        <tomcat.version>10.1.59</tomcat.version>
     </properties>
 
     <dependencies>
