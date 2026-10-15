@@ -49,16 +49,21 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             version="${GITHUB_REF_NAME#v}"
           else
-            version="1.0.0"
+            version="$(python3 -c 'import xml.etree.ElementTree as ET; print(ET.parse("pom.xml").findtext("{http://maven.apache.org/POM/4.0.0}version"))')"
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Set Maven version from tag
         if: github.ref_type == 'tag'
-        run: mvn -B -ntp versions:set -DnewVersion=${{ steps.release-version.outputs.version }} -DgenerateBackupPoms=false
+        env:
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: >-
+          bash ./mvnw -B -ntp -U -e -V
+          org.codehaus.mojo:versions-maven-plugin:2.23.0:set
+          "-DnewVersion=$RELEASE_VERSION" -DgenerateBackupPoms=false
 
       - name: Build release artifacts
-        run: mvn -B -ntp clean package ${{ matrix.maven-projects }} -Dmaven.compiler.release=${{ matrix.java-version }}
+        run: bash ./mvnw -B -ntp -U -e -V clean package ${{ matrix.maven-projects }} -Dmaven.compiler.release=${{ matrix.java-version }}
 
       - name: Collect jars
         run: |
