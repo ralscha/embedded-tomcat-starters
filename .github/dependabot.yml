@@ -19,6 +19,10 @@ updates:
       - minor
       - patch
 - package-ecosystem: maven
+  # The tomcat9, tomcat10, and tomcat11 artifacts deliberately target different servlet generations.
+  ignore:
+  - dependency-name: "org.apache.tomcat*:*"
+    update-types: [version-update:semver-major]
   directory: /
   schedule:
     interval: weekly
