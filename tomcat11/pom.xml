@@ -12,7 +12,7 @@
     <name>embedded-tomcat-starter-tomcat11</name>
 
     <properties>
-        <tomcat.version>11.0.27</tomcat.version>
+        <tomcat.version>11.0.29</tomcat.version>
     </properties>
 
     <dependencies>
